@@ -3,4 +3,4 @@ numpy
 matplotlib
 plotly
 scipy
-ruckig
+ruckig==0.15.3
