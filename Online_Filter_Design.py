@@ -11,7 +11,6 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import signal
-from ruckig import InputParameter, OutputParameter, Result, Ruckig, Trajectory
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
