@@ -3,4 +3,4 @@ numpy
 matplotlib
 plotly
 scipy
-ruckig --no-binary :all:
+ruckig
