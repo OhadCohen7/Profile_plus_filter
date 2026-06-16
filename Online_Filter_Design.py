@@ -10,7 +10,7 @@ import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 import ruckig
-from ruckig import InputParameter, OutputParameter, Result, Ruckig, Trajectory
+#from ruckig import InputParameter, OutputParameter, Result, Ruckig, Trajectory
 from plotly.subplots import make_subplots
 from scipy import signal
 
