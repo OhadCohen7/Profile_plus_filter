@@ -46,7 +46,7 @@ with tab_profile:
 
     # ── imports (guarded so missing ruckig doesn't break the filter tab) ──────
     try:
-        from ruckig import InputParameter, OutputParameter, Result, Ruckig, Trajectory
+        from ruckig import InputParameter, OutputParameter, Result, Ruckig, TrajectoryError
         ruckig_ok = True
     except ImportError:
         ruckig_ok = True
@@ -80,7 +80,7 @@ with tab_profile:
                 inp.max_acceleration = [self.acc]
                 inp.max_jerk = [self.jerk]
                 otg = Ruckig(1)
-                trajectory = Trajectory(1)
+                trajectory = TrajectoryError(1)
                 result = otg.calculate(inp, trajectory)
                 if result == Result.ErrorInvalidInput:
                     raise Exception("Invalid input!")
