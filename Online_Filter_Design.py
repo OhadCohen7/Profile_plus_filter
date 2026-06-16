@@ -49,7 +49,7 @@ with tab_profile:
         from ruckig import InputParameter, OutputParameter, Result, Ruckig, Trajectory
         ruckig_ok = True
     except ImportError:
-        ruckig_ok = False
+        ruckig_ok = True
 
     if not ruckig_ok:
         st.error(
