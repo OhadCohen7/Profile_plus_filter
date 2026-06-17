@@ -174,7 +174,7 @@ with tab_profile:
                         figs, t_total, acc_rms = generate_profile(start, finish, vel, acc, jerk)
 
                     st.success(f"**Time to perform:** `{t_total:.4f}` s")
-                    st.info(f"**RMS Acceleration** (proxy for RMS current): `{acc_rms:.3f}` UU/s²")
+                    st.info(f"**RMS Acceleration** (Proportional to RMS current): `{acc_rms:.3f}` UU/s²")
 
                     st.plotly_chart(figs[0], use_container_width=True)
                     st.plotly_chart(figs[1], use_container_width=True)
