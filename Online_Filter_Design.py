@@ -208,9 +208,11 @@ with tab_filter:
             nd = dd = 0.707
         else:
             raise ValueError(f"Unknown filter type: '{filter_type}'")
+          
         nf, df = np.clip([nf, df], 0.1, 4000)
         nd, dd = np.clip([nd, dd], 0.01, 1.0)
         return float(nf), float(df), float(nd), float(dd)
+      
     def calculate_biquad_params(filter_type, f_hz, width_hz, atten_db):
     """
     Calculates SLVB0 NF, DF, ND, DD based on filter requirements.
