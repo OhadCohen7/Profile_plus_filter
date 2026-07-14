@@ -192,27 +192,6 @@ with tab_profile:
 with tab_filter:
 
     # ── core math ─────────────────────────────────────────────────────────────
-    def calculate_biquad_params_atten_abs(filter_type: str, f_hz: float, width_hz: float, atten_abs: float):
-        ft = filter_type.lower()
-        if ft == "notch":
-            nf = df = f_hz
-            nd = width_hz / (2 * f_hz)
-            dd = nd * atten_abs
-        elif ft in ("anti-notch", "band-pass"):
-            nf = df = f_hz
-            dd = width_hz / (2 * f_hz)
-            nd = dd * atten_abs
-        elif ft == "lpf":
-            df = f_hz
-            nf = df * np.sqrt(atten_abs)
-            nd = dd = 0.707
-        else:
-            raise ValueError(f"Unknown filter type: '{filter_type}'")
-          
-        nf, df = np.clip([nf, df], 0.1, 4000)
-        nd, dd = np.clip([nd, dd], 0.01, 1.0)
-        return float(nf), float(df), float(nd), float(dd)
-      
     def calculate_biquad_params(filter_type, f_hz, width_hz, atten_db):
     """
     Calculates SLVB0 NF, DF, ND, DD based on filter requirements.
