@@ -305,7 +305,7 @@ with tab_filter:
             width = 0.0
             st.caption("Width is not used for LPF.")
 
-        atten_label = "Gain (absolute)" if filter_type == "lpf" else "Attenuation (absolute)"
+        atten_label = "Gain (absolute)" if filter_type == "lpf" else "Attenuation (db)"
         atten = st.number_input(atten_label, min_value=0.01, value=5.0, step=0.1, format="%.2f")
 
         run_filter = st.button("Compute & plot", use_container_width=True, type="primary", key="run_filter")
