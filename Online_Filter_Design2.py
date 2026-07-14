@@ -268,6 +268,11 @@ with tab_filter:
         nd = dd = 0.707
     else:
         raise ValueError("Unknown filter type. Use 'notch', 'anti-notch', or 'lpf'.")
+      
+    # Clamp values to valid ACS ranges: 0.1-4000Hz, 0.01-1.0 damping
+    # Reference: Source 16, page 341
+    nf, df = np.clip([nf, df], 0.1, 4000)
+    nd, dd = np.clip([nd, dd], 0.01, 1.0)
 
     def make_bode_figure(freqs, mag, phase, title):
         fig = make_subplots(
