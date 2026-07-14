@@ -206,8 +206,8 @@ with tab_profile:
 # TAB 2 — BiQuad Filter Designer
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_filter:
-
-    def calculate_biquad_params(filter_type, f_hz, width_hz, atten_abs):
+  
+    def calculate_biquad_params_atten_abs(filter_type, f_hz, width_hz, atten_abs):
         ft = filter_type.lower()
         if ft == "notch":
             nf = df = f_hz
@@ -236,6 +236,38 @@ with tab_filter:
         w_hz = np.logspace(0, np.log10(4000), 600)
         _, mag, phase = signal.bode(sys, 2 * np.pi * w_hz)
         return w_hz, mag, phase
+      
+    def calculate_biquad_params(filter_type, f_hz, width_hz, atten_db):
+    """
+    Calculates SLVB0 NF, DF, ND, DD based on filter requirements.
+    atten_db: Positive value for attenuation (reduction) or gain (boost) in dB.
+    """
+    filter_type = filter_type.lower()
+    
+    # Convert dB to absolute units: Absolute = 10^(dB/20)
+    # Reference: Source 5 (Slide 9), Source 6 (Slide 14)
+    atten_abs = 10**(atten_db / 20.0)
+    
+    if filter_type == 'notch':
+        # Notch Formula: Source 16, page 342
+        nf = df = f_hz
+        nd = width_hz / (2 * f_hz)  # Numerator Damping
+        dd = nd * atten_abs         # Denominator Damping (must be > ND for a dip)
+        
+    elif filter_type in ['anti-notch', 'band-pass']:
+        # Inverse of Notch logic to create a peak: Source 16, page 342
+        nf = df = f_hz
+        dd = width_hz / (2 * f_hz)
+        nd = dd * atten_abs         # Numerator Damping (must be > DD for a peak)
+        
+    elif filter_type == 'lpf':
+        # 2nd Order Lag: Source 16, page 344
+        # Low frequency gain = (NF/DF)^2. So NF = DF * sqrt(Gain_abs)
+        df = f_hz
+        nf = df * np.sqrt(atten_abs)
+        nd = dd = 0.707
+    else:
+        raise ValueError("Unknown filter type. Use 'notch', 'anti-notch', or 'lpf'.")
 
     def make_bode_figure(freqs, mag, phase, title):
         fig = make_subplots(
