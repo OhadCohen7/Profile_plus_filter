@@ -111,7 +111,7 @@ with tab_profile:
                 return time, position, speed, acc
 
         # ── helpers ───────────────────────────────────────────────────────────
-        def generate_profile(start, finish, vel, acc, jerk):
+        def generate_profile(start, finish, vel, acc, jerk, mass_kg, kt, unit_scale):
             axis = Axis("axis", vel, acc, acc, jerk, "uu")
             t_total = axis.time_to_perform(start, finish)
             time, position, speed, accel = axis.online_trajectory(start, finish)
@@ -120,6 +120,15 @@ with tab_profile:
             speed    = [s[0] for s in speed]
             accel    = [a[0] for a in accel]
             acc_rms  = float(np.sqrt(np.mean(np.square(accel))))
+
+            # ── Current calculation ──────────────────────────────────────────
+            # Convert acceleration from UU/s² to m/s² using unit_scale (UU -> meters),
+            # then F = m*a, I = F/Kt
+            accel_si = [a * unit_scale for a in accel]
+            force    = [mass_kg * a for a in accel_si]
+            current  = [f / kt for f in force]
+            current_rms  = float(np.sqrt(np.mean(np.square(current))))
+            current_peak = float(np.max(np.abs(current)))
 
             def make_fig(x, y, title, ytitle, hover_y):
                 fig = go.Figure()
@@ -139,8 +148,9 @@ with tab_profile:
             fig_pos = make_fig(time, position, "Position",     "(User Units)",        "Position")
             fig_vel = make_fig(time, speed,    "Velocity",     "(User Units)/sec",    "Velocity")
             fig_acc = make_fig(time, accel,    "Acceleration", "(User Units)/sec²",   "Acceleration")
+            fig_cur = make_fig(time, current,  "Motor Current", "Amps",              "Current")
 
-            return (fig_pos, fig_vel, fig_acc), t_total, acc_rms
+            return (fig_pos, fig_vel, fig_acc, fig_cur), t_total, acc_rms, current_rms, current_peak
 
         # ── presets ───────────────────────────────────────────────────────────
         PRESETS = {
@@ -165,20 +175,42 @@ with tab_profile:
             acc    = st.number_input("Acc & Dec (UU/s²)",      value=preset["acc"],      step=10.0, format="%.3f")
             jerk   = st.number_input("Jerk (UU/s³)",          value=preset["jerk"],     step=10.0, format="%.3f")
 
+            st.markdown("---")
+            st.caption("Current calculation (optional)")
+
+            position_unit = st.selectbox(
+                "What do User Units (UU) represent?",
+                ["Millimeters", "Meters"],
+                index=0,
+                help="Needed to convert acceleration to m/s² for F = m·a. "
+                     "If your axis is rotary, this feature isn't applicable.",
+            )
+            unit_scale = 0.001 if position_unit == "Millimeters" else 1.0
+
+            mass_kg = st.number_input("Moving mass (Kg)", value=1.0, min_value=0.0, step=0.1, format="%.3f")
+            kt      = st.number_input("Motor torque/force constant Kt (N/Amp)", value=1.0, min_value=1e-9, step=0.1, format="%.4f")
+
             run_profile = st.button("Generate profile", use_container_width=True, type="primary")
 
         with plot_col:
             if run_profile:
                 try:
                     with st.spinner("Computing trajectory…"):
-                        figs, t_total, acc_rms = generate_profile(start, finish, vel, acc, jerk)
+                        figs, t_total, acc_rms, current_rms, current_peak = generate_profile(
+                            start, finish, vel, acc, jerk, mass_kg, kt, unit_scale
+                        )
 
                     st.success(f"**Time to perform:** `{t_total:.4f}` s")
                     st.info(f"**RMS Acceleration** (Proportional to RMS current): `{acc_rms:.3f}` UU/s²")
 
+                    m1, m2 = st.columns(2)
+                    m1.metric("RMS Current", f"{current_rms:.3f} A")
+                    m2.metric("Peak Current", f"{current_peak:.3f} A")
+
                     st.plotly_chart(figs[0], use_container_width=True)
                     st.plotly_chart(figs[1], use_container_width=True)
                     st.plotly_chart(figs[2], use_container_width=True)
+                    st.plotly_chart(figs[3], use_container_width=True)
 
                 except Exception as e:
                     st.error(f"Error: {e}")
