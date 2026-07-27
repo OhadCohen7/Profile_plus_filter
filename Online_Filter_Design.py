@@ -111,7 +111,7 @@ with tab_profile:
                 return time, position, speed, acc
 
         # ── helpers ───────────────────────────────────────────────────────────
-        def generate_profile(start, finish, vel, acc, jerk, mass_kg, kt, unit_scale):
+        def generate_profile(start, finish, vel, acc, jerk, mass_kg, kt, unit_scale, friction_n):
             axis = Axis("axis", vel, acc, acc, jerk, "uu")
             t_total = axis.time_to_perform(start, finish)
             time, position, speed, accel = axis.online_trajectory(start, finish)
@@ -123,9 +123,10 @@ with tab_profile:
 
             # ── Current calculation ──────────────────────────────────────────
             # Convert acceleration from UU/s² to m/s² using unit_scale (UU -> meters),
-            # then F = m*a, I = F/Kt
-            accel_si = [a * unit_scale for a in accel]
-            force    = [mass_kg * a for a in accel_si]
+            # then F = m*a + F_friction (friction opposes the direction of motion), I = F/Kt
+            accel_si     = [a * unit_scale for a in accel]
+            friction_force = [friction_n * np.sign(v) for v in speed]
+            force    = [mass_kg * a + f_fric for a, f_fric in zip(accel_si, friction_force)]
             current  = [f / kt for f in force]
             current_rms  = float(np.sqrt(np.mean(np.square(current))))
             current_peak = float(np.max(np.abs(current)))
@@ -189,6 +190,11 @@ with tab_profile:
 
             mass_kg = st.number_input("Moving mass (Kg)", value=1.0, min_value=0.0, step=0.1, format="%.3f")
             kt      = st.number_input("Motor torque/force constant Kt (N/Amp)", value=1.0, min_value=1e-9, step=0.1, format="%.4f")
+            friction_n = st.number_input(
+                "Friction force (N)", value=0.0, min_value=0.0, step=0.1, format="%.3f",
+                help="Magnitude of friction force opposing the direction of motion. "
+                     "Added to the inertial force (m·a) when computing current.",
+            )
 
             run_profile = st.button("Generate profile", use_container_width=True, type="primary")
 
@@ -197,7 +203,7 @@ with tab_profile:
                 try:
                     with st.spinner("Computing trajectory…"):
                         figs, t_total, acc_rms, current_rms, current_peak = generate_profile(
-                            start, finish, vel, acc, jerk, mass_kg, kt, unit_scale
+                            start, finish, vel, acc, jerk, mass_kg, kt, unit_scale, friction_n
                         )
 
                     st.success(f"**Time to perform:** `{t_total:.4f}` s")
