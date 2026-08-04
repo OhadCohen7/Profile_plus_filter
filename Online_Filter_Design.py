@@ -125,7 +125,8 @@ with tab_profile:
         acc_arr.append([0.0])
         return time_arr, pos_arr, vel_arr, acc_arr
 
-    def generate_profile(start, finish, vel, acc, jerk, mass_kg, kt, unit_scale, friction_n):
+    def generate_profile(start, finish, vel, acc, jerk, mass_kg, kt, unit_scale, friction_n,
+                         duty_cycle_pct, motor_type, ke, resistance, bus_voltage):
         time, position, speed, accel = jerk_limited_profile(start, finish, vel, acc, jerk)
         t_total = time[-1]
 
@@ -134,26 +135,59 @@ with tab_profile:
         accel    = [a[0] for a in accel]
         acc_rms  = float(np.sqrt(np.mean(np.square(accel))))
 
-        # Current estimation: F = m*a + friction (opposes motion), I = F / Kt
+        # ── Current ──────────────────────────────────────────────────────────
+        # F = m*a (in SI) + friction opposing motion direction;  I = F / Kt
         accel_si       = [a * unit_scale for a in accel]
         friction_force = [friction_n * np.sign(v) for v in speed]
         force          = [mass_kg * a + f for a, f in zip(accel_si, friction_force)]
         current        = [f / kt for f in force]
-        current_rms    = float(np.sqrt(np.mean(np.square(current))))
-        current_peak   = float(np.max(np.abs(current)))
 
-        def make_fig(x, y, title, ytitle, hover_y):
+        current_rms_profile = float(np.sqrt(np.mean(np.square(current))))
+        current_peak        = float(np.max(np.abs(current)))
+
+        # Duty-cycle-weighted RMS:  I_rms_total = I_rms_profile * sqrt(duty)
+        duty = max(0.0, min(1.0, duty_cycle_pct / 100.0))
+        current_rms_total = current_rms_profile * np.sqrt(duty)
+
+        # ── Back EMF ─────────────────────────────────────────────────────────
+        # Convert speed to SI (m/s or rad/s) then apply Ke
+        if motor_type == "Linear (V/(m/s))":
+            # speed is in UU/s; unit_scale converts UU → m
+            speed_si = [s * unit_scale for s in speed]          # m/s
+            bemf     = [ke * abs(s) for s in speed_si]          # V
+        else:
+            # Rotary: speed is in RPM (UU == RPM assumed)
+            # Ke unit: V/RPM  →  BEMF = Ke * |RPM|
+            bemf = [ke * abs(s) for s in speed]                  # V
+
+        bemf_peak = float(np.max(bemf))
+
+        # ── Bus sufficiency ───────────────────────────────────────────────────
+        # Required voltage at peak: V_required = BEMF_peak + I_peak * R
+        ir_peak      = current_peak * resistance
+        v_required   = bemf_peak + ir_peak
+        bus_ok       = (bus_voltage is not None) and (bus_voltage >= v_required)
+        bus_margin   = (bus_voltage - v_required) if bus_voltage is not None else None
+
+        # ── Voltage trace (instantaneous) ─────────────────────────────────────
+        if bus_voltage is not None:
+            voltage = [b + abs(i) * resistance for b, i in zip(bemf, current)]
+        else:
+            voltage = None
+
+        # ── Figures ───────────────────────────────────────────────────────────
+        def make_fig(x, y, title, ytitle, hover_y, extra_traces=None):
             fig = go.Figure()
             fig.add_trace(go.Scatter(
                 x=x, y=y, mode="lines",
                 hovertemplate=f"Time: %{{x:.3f}} s<br>{hover_y}: %{{y:.3f}}",
             ))
+            if extra_traces:
+                for tr in extra_traces:
+                    fig.add_trace(tr)
             fig.update_layout(
-                title=title,
-                xaxis_title="Time [sec]",
-                yaxis_title=ytitle,
-                hovermode="x unified",
-                margin=dict(t=40, b=30),
+                title=title, xaxis_title="Time [sec]", yaxis_title=ytitle,
+                hovermode="x unified", margin=dict(t=40, b=30),
             )
             return fig
 
@@ -162,7 +196,34 @@ with tab_profile:
         fig_acc = make_fig(time, accel,    "Acceleration",  "(User Units)/sec²", "Acceleration")
         fig_cur = make_fig(time, current,  "Motor Current", "Amps",              "Current")
 
-        return (fig_pos, fig_vel, fig_acc, fig_cur), t_total, acc_rms, current_rms, current_peak
+        fig_volt = None
+        if voltage is not None:
+            bus_line = go.Scatter(
+                x=[time[0], time[-1]], y=[bus_voltage, bus_voltage],
+                mode="lines", name="Bus voltage",
+                line=dict(color="red", dash="dash", width=1.5),
+                hovertemplate=f"Bus: {bus_voltage:.1f} V",
+            )
+            fig_volt = make_fig(
+                time, voltage,
+                "Required Motor Voltage (BEMF + I·R)", "Voltage (V)", "V_motor",
+                extra_traces=[bus_line],
+            )
+            fig_volt.update_layout(showlegend=True)
+
+        results = dict(
+            t_total=t_total,
+            acc_rms=acc_rms,
+            current_rms_profile=current_rms_profile,
+            current_rms_total=current_rms_total,
+            current_peak=current_peak,
+            bemf_peak=bemf_peak,
+            ir_peak=ir_peak,
+            v_required=v_required,
+            bus_ok=bus_ok,
+            bus_margin=bus_margin,
+        )
+        return (fig_pos, fig_vel, fig_acc, fig_cur, fig_volt), results
 
     # ── Presets ───────────────────────────────────────────────────────────────
     PRESETS = {
@@ -194,18 +255,40 @@ with tab_profile:
             "What do User Units (UU) represent?",
             ["Millimeters", "Meters"],
             index=0,
-            help="Needed to convert acceleration to m/s² for F = m·a. "
-                 "If your axis is rotary, this feature isn't applicable.",
+            help="Needed to convert acceleration to m/s² for F = m·a.",
         )
         unit_scale = 0.001 if position_unit == "Millimeters" else 1.0
 
-        mass_kg    = st.number_input("Moving mass (Kg)",                        value=1.0,  min_value=0.0,   step=0.1,  format="%.3f")
-        kt         = st.number_input("Motor torque/force constant Kt (N/Amp)",  value=1.0,  min_value=1e-9,  step=0.1,  format="%.4f")
+        mass_kg    = st.number_input("Moving mass (kg)",                       value=1.0, min_value=0.0,  step=0.1,  format="%.3f")
+        kt         = st.number_input("Force/torque constant Kt (N/A or N·m/A)",value=1.0, min_value=1e-9, step=0.1,  format="%.4f")
         friction_n = st.number_input(
             "Friction force (N)", value=0.0, min_value=0.0, step=0.1, format="%.3f",
-            help="Magnitude of friction force opposing the direction of motion. "
-                 "Added to the inertial force (m·a) when computing current.",
+            help="Magnitude opposing motion, added to m·a.",
         )
+        duty_cycle_pct = st.number_input(
+            "Duty cycle (%)", value=100.0, min_value=0.1, max_value=100.0, step=1.0, format="%.1f",
+            help="Fraction of time the move is active. "
+                 "I_rms_total = I_rms_profile × √(duty). "
+                 "100% means the motor is always moving.",
+        )
+
+        st.markdown("---")
+        st.caption("Bus voltage check (optional)")
+
+        motor_type = st.selectbox(
+            "Motor type",
+            ["Linear (V/(m/s))", "Rotary (V/RPM)"],
+            help="Sets the unit of the Back-EMF constant Ke.",
+        )
+        ke_label = "Ke — Back-EMF constant (V·s/m)" if motor_type == "Linear (V/(m/s))" \
+                   else "Ke — Back-EMF constant (V/RPM)"
+        ke         = st.number_input(ke_label,              value=1.0, min_value=0.0, step=0.01, format="%.4f")
+        resistance = st.number_input("Winding resistance R (Ω)", value=1.0, min_value=0.0, step=0.1,  format="%.4f")
+
+        enable_bus = st.checkbox("Enter bus voltage", value=False)
+        bus_voltage = None
+        if enable_bus:
+            bus_voltage = st.number_input("DC bus voltage (V)", value=48.0, min_value=0.0, step=1.0, format="%.1f")
 
         run_profile = st.button("Generate profile", use_container_width=True, type="primary")
 
@@ -213,21 +296,51 @@ with tab_profile:
         if run_profile:
             try:
                 with st.spinner("Computing trajectory…"):
-                    figs, t_total, acc_rms, current_rms, current_peak = generate_profile(
-                        start, finish, vel, acc, jerk, mass_kg, kt, unit_scale, friction_n
+                    figs, res = generate_profile(
+                        start, finish, vel, acc, jerk,
+                        mass_kg, kt, unit_scale, friction_n,
+                        duty_cycle_pct, motor_type, ke, resistance, bus_voltage,
                     )
 
-                st.success(f"**Time to perform:** `{t_total:.4f}` s")
-                st.info(f"**RMS Acceleration** (Proportional to RMS current): `{acc_rms:.3f}` UU/s²")
+                st.success(f"**Time to perform:** `{res['t_total']:.4f}` s")
 
-                m1, m2 = st.columns(2)
-                m1.metric("RMS Current",  f"{current_rms:.3f} A")
-                m2.metric("Peak Current", f"{current_peak:.3f} A")
+                # ── Current metrics ───────────────────────────────────────────
+                st.markdown("**Current**")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Peak Current",           f"{res['current_peak']:.3f} A")
+                c2.metric("RMS Current (profile)",  f"{res['current_rms_profile']:.3f} A",
+                          help="RMS over the move duration only.")
+                c3.metric(f"RMS Current (duty={duty_cycle_pct:.0f}%)",
+                          f"{res['current_rms_total']:.3f} A",
+                          help="I_rms_profile × √(duty) — what the drive/motor sees thermally.")
 
+                # ── Bus voltage metrics ───────────────────────────────────────
+                if bus_voltage is not None:
+                    st.markdown("**Bus voltage check**")
+                    v1, v2, v3, v4 = st.columns(4)
+                    v1.metric("BEMF peak",      f"{res['bemf_peak']:.2f} V")
+                    v2.metric("I·R peak",       f"{res['ir_peak']:.2f} V")
+                    v3.metric("V required peak",f"{res['v_required']:.2f} V",
+                              help="BEMF_peak + I_peak·R")
+                    margin = res['bus_margin']
+                    margin_str = f"{margin:+.2f} V"
+                    if res['bus_ok']:
+                        v4.metric("Bus margin", margin_str, delta=margin_str,
+                                  delta_color="normal")
+                        st.success(f"✅ Bus sufficient — {margin:.2f} V headroom above peak demand.")
+                    else:
+                        v4.metric("Bus deficit", margin_str, delta=margin_str,
+                                  delta_color="inverse")
+                        st.error(f"❌ Bus insufficient — {abs(margin):.2f} V short of peak demand "
+                                 f"({res['v_required']:.2f} V required, {bus_voltage:.1f} V available).")
+
+                # ── Plots ─────────────────────────────────────────────────────
                 st.plotly_chart(figs[0], use_container_width=True)
                 st.plotly_chart(figs[1], use_container_width=True)
                 st.plotly_chart(figs[2], use_container_width=True)
                 st.plotly_chart(figs[3], use_container_width=True)
+                if figs[4] is not None:
+                    st.plotly_chart(figs[4], use_container_width=True)
 
             except Exception as e:
                 st.error(f"Error: {e}")
