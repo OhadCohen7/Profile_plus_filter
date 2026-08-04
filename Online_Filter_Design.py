@@ -147,7 +147,7 @@ with tab_profile:
 
         # Duty-cycle-weighted RMS:  I_rms_total = I_rms_profile * sqrt(duty)
         duty = max(0.0, min(1.0, duty_cycle_pct / 100.0))
-        current_rms_total = current_rms_profile * np.sqrt(duty)
+        current_rms_total = current_rms_profile * duty
 
         # ── Back EMF ─────────────────────────────────────────────────────────
         # Convert speed to SI (m/s or rad/s) then apply Ke
@@ -312,7 +312,7 @@ with tab_profile:
                           help="RMS over the move duration only.")
                 c3.metric(f"RMS Current (duty={duty_cycle_pct:.0f}%)",
                           f"{res['current_rms_total']:.3f} A",
-                          help="I_rms_profile × √(duty) — what the drive/motor sees thermally.")
+                          help="I_rms_profile × (duty) — Irms over the entire sequence according to the given duty cycle.")
 
                 # ── Bus voltage metrics ───────────────────────────────────────
                 if bus_voltage is not None:
