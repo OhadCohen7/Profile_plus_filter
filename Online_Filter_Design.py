@@ -434,17 +434,17 @@ with tab_filter:
 
     with ctrl_col2:
         st.subheader("Filter configuration")
-
+        default_value = "manual"
         filter_type = st.selectbox(
             "Filter type",
             options=["notch", "anti-notch", "lpf", "manual"],
-            default_value = "manual",
             format_func=lambda x: {
                 "notch":      "Notch",
                 "anti-notch": "Anti-notch / Band-pass",
                 "lpf":        "LPF",
                 "manual":     "Manual BiQuad (SLVB) parameters",
             }[x],
+            index=options.index(default_value),
             key="filter_type_sel",
         )
 
