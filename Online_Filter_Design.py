@@ -438,10 +438,11 @@ with tab_filter:
         filter_type = st.selectbox(
             "Filter type",
             options=["notch", "anti-notch", "lpf", "manual"],
+            default_value = "manual"
             format_func=lambda x: {
                 "notch":      "Notch",
                 "anti-notch": "Anti-notch / Band-pass",
-                "lpf":        "LPF (2nd-order lag)",
+                "lpf":        "LPF",
                 "manual":     "Manual BiQuad (SLVB) parameters",
             }[x],
             key="filter_type_sel",
