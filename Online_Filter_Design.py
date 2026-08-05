@@ -451,12 +451,9 @@ with tab_filter:
             # ── Manual BiQuad (SLVB) parameters ────────────────────────────────────────────
             st.caption("Enter the four SLVB0 parameters directly (Valid range shown).")
 
-            st.markdown(
-                r"""
-                $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}
-                              {s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
-                """,
-            )
+            st.markdown(r"""
+            $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}{s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
+            """)
 
             man_nf = st.number_input(
                 "SLVB0NF — Numerator Frequency, ωN (Hz)",
