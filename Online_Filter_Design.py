@@ -442,13 +442,13 @@ with tab_filter:
                 "notch":      "Notch",
                 "anti-notch": "Anti-notch / Band-pass",
                 "lpf":        "LPF (2nd-order lag)",
-                "manual":     "Manual SLVB0 parameters",
+                "manual":     "Manual BiQuad (SLVB) parameters",
             }[x],
             key="filter_type_sel",
         )
 
         if filter_type == "manual":
-            # ── Manual SLVB0 entry ────────────────────────────────────────────
+            # ── Manual BiQuad (SLVB) parameters ────────────────────────────────────────────
             st.caption("Enter the four SLVB0 parameters directly (Valid range shown).")
 
             st.markdown(
