@@ -247,7 +247,7 @@ with tab_profile:
         vel    = st.number_input("Speed (UU/s)",         value=preset["speed"], step=10.0, format="%.3f")
         acc    = st.number_input("Acc & Dec (UU/s²)",    value=preset["acc"],   step=10.0, format="%.3f")
         jerk   = st.number_input("Jerk (UU/s³)",        value=preset["jerk"],  step=10.0, format="%.3f")
-        run_profile1 = st.button("Generate profile", use_container_width=True, type="primary")
+        run_profile1 = st.button("Generate profile", use_container_width=True, type="primary", key="gen_profile_top")
         st.markdown("---")
         st.caption("Current calculation (optional)")
 
@@ -290,7 +290,7 @@ with tab_profile:
         if enable_bus:
             bus_voltage = st.number_input("DC bus voltage (V)", value=48.0, min_value=0.0, step=1.0, format="%.1f")
 
-        run_profile2 = st.button("Generate profile", use_container_width=True, type="primary")
+        run_profile2 = st.button("Generate profile", use_container_width=True, type="primary", key="gen_profile_bottom")
 
     with plot_col:
         if run_profile1 or run_profile2:
