@@ -290,7 +290,7 @@ with tab_profile:
         if enable_bus:
             bus_voltage = st.number_input("DC bus voltage (V)", value=48.0, min_value=0.0, step=1.0, format="%.1f")
 
-        #run_profile = st.button("Generate profile", use_container_width=True, type="primary")
+        run_profile = st.button("Generate profile", use_container_width=True, type="primary")
 
     with plot_col:
         if run_profile:
