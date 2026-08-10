@@ -386,11 +386,16 @@ with tab_filter:
         nd, dd = np.clip([nd, dd], 0.01, 1.0)
         return float(nf), float(df), float(nd), float(dd)
 
-    def compute_bode(nf, df, nd, dd):
+    def compute_bode(filter_type, df, nd, dd):
         omega_n = 2 * np.pi * nf
         omega_d = 2 * np.pi * df
-        num = [1, 2 * nd * omega_n, omega_n ** 2]
-        den = [1, 2 * dd * omega_d, omega_d ** 2]
+        k = (omega_d / omega_n)**2
+        if filter_type =='lpf':
+            num = [k, k * 2 * nd * omega_n, k *omega_n ** 2]
+            den = [1, 2 * dd * omega_d, omega_d ** 2]
+        else
+            num = [1, 2 * nd * omega_n, omega_n ** 2]
+            den = [1, 2 * dd * omega_d, omega_d ** 2]
         sys = signal.TransferFunction(num, den)
         w_hz = np.logspace(0, np.log10(4000), 600)
         _, mag, phase = signal.bode(sys, 2 * np.pi * w_hz)
@@ -509,7 +514,7 @@ with tab_filter:
                     nf, df, nd, dd = calculate_biquad_params(filter_type, freq, width, atten)
                     bode_label = filter_type.upper()
 
-                freqs, mag, phase = compute_bode(nf, df, nd, dd)
+                freqs, mag, phase = compute_bode(filter_type, nf, df, nd, dd)
 
                 bode_title = (
                     f"Bode Plot — {bode_label}  |  "
