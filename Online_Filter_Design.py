@@ -333,26 +333,37 @@ with tab_filter:
         return w_hz, mag, phase
 
     def make_bode_figure(freqs, mag, phase, title):
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
-                            subplot_titles=("Magnitude (dB)", "Phase (°)"))
+        fig = make_subplots(
+            rows=2, cols=1, shared_xaxes=True,
+            vertical_spacing=0.18,
+            subplot_titles=("Magnitude (dB)", "Phase (°)"),
+        )
         fig.add_trace(go.Scatter(x=freqs, y=mag, mode="lines", name="Magnitude",
             line=dict(color="#5b8af5", width=2),
             fill="tozeroy", fillcolor="rgba(91,138,245,0.07)"), row=1, col=1)
         fig.add_trace(go.Scatter(x=freqs, y=phase, mode="lines", name="Phase",
             line=dict(color="#3dd68c", width=2)), row=2, col=1)
-        log_x = dict(
-            type="log", range=[0, np.log10(4000)],
-            tickvals=[1,2,5,10,20,50,100,200,500,1000,2000,4000],
-            ticktext=["1","2","5","10","20","50","100","200","500","1k","2k","4k"],
-            showgrid=True, gridcolor="rgba(128,128,128,0.2)", title_text="Frequency (Hz)",
+
+        log_x_base = dict(
+            type="log",
+            range=[0, np.log10(4000)],
+            tickvals=[1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 4000],
+            ticktext=["1", "2", "5", "10", "20", "50", "100", "200", "500", "1k", "2k", "4k"],
+            showgrid=True, gridcolor="rgba(128,128,128,0.2)",
         )
-        fig.update_xaxes(log_x, row=1, col=1)
-        fig.update_xaxes(log_x, row=2, col=1)
+        # Top subplot: no x-axis label (shared axis, label only on bottom)
+        fig.update_xaxes(log_x_base, row=1, col=1)
+        # Bottom subplot: x-axis label here only
+        fig.update_xaxes({**log_x_base, "title_text": "Frequency (Hz)"}, row=2, col=1)
+
         fig.update_yaxes(title_text="Magnitude (dB)", showgrid=True, gridcolor="rgba(128,128,128,0.2)", row=1, col=1)
         fig.update_yaxes(title_text="Phase (°)",      showgrid=True, gridcolor="rgba(128,128,128,0.2)", row=2, col=1)
-        fig.update_layout(title=dict(text=title, font=dict(size=13), x=0.0, xanchor="left"),
-                          showlegend=False, height=500,
-                          margin=dict(l=10, r=10, t=50, b=10), hovermode="x unified")
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=13), x=0.0, xanchor="left"),
+            showlegend=False, height=560,
+            margin=dict(l=10, r=10, t=50, b=40),
+            hovermode="x unified",
+        )
         return fig
 
     ctrl_col2, plot_col2 = st.columns([1, 2.5], gap="large")
