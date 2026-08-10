@@ -1,5 +1,5 @@
 """
-Motion Tools — Streamlit App
+ACS Motion Tools — Streamlit App
 Tabs:
   1. 3rd-Order Motion Profile Generator (pure-Python, no ruckig dependency)
   2. BiQuad Filter Designer
@@ -34,7 +34,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚙️ Motion Tools")
+st.title("⚙️ ACS Motion Tools")
 
 tab_profile, tab_filter = st.tabs(["📈 Motion Profile Generator", "🎛️ BiQuad Filter Designer"])
 
@@ -147,7 +147,7 @@ with tab_profile:
 
         # Duty-cycle-weighted RMS:  I_rms_total = I_rms_profile * sqrt(duty)
         duty = max(0.0, min(1.0, duty_cycle_pct / 100.0))
-        current_rms_total = current_rms_profile * duty
+        current_rms_total = current_rms_profile * np.sqrt(duty)
 
         # ── Back EMF ─────────────────────────────────────────────────────────
         # Convert speed to SI (m/s or rad/s) then apply Ke
@@ -227,10 +227,10 @@ with tab_profile:
 
     # ── Presets ───────────────────────────────────────────────────────────────
     PRESETS = {
-        "X axis (IM)":     {"speed": 1200.0, "acc": 24000.0,  "jerk": 600000.0},
-        "Y axis (IM)":     {"speed": 1200.0, "acc": 12000.0,  "jerk": 185000.0},
-        "Theta axis (IM)": {"speed":   22.0, "acc":   140.0,  "jerk":   1500.0},
-        "Pol (IM)":  {"speed":   53.0, "acc":  3400.0,  "jerk": 235000.0},
+        "IM X axis":     {"speed": 1200.0, "acc": 24000.0,  "jerk": 600000.0},
+        "IM Y axis":     {"speed": 1200.0, "acc": 12000.0,  "jerk": 185000.0},
+        "IM Theta axis": {"speed":   22.0, "acc":   140.0,  "jerk":   1500.0},
+        "IM Polarizer":  {"speed":   53.0, "acc":  3400.0,  "jerk": 235000.0},
     }
 
     # ── Layout ────────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ with tab_profile:
         vel    = st.number_input("Speed (UU/s)",         value=preset["speed"], step=10.0, format="%.3f")
         acc    = st.number_input("Acc & Dec (UU/s²)",    value=preset["acc"],   step=10.0, format="%.3f")
         jerk   = st.number_input("Jerk (UU/s³)",        value=preset["jerk"],  step=10.0, format="%.3f")
-        run_profile1 = st.button("Generate profile", use_container_width=True, type="primary", key="gen_profile_top")
+
         st.markdown("---")
         st.caption("Current calculation (optional)")
 
@@ -290,10 +290,10 @@ with tab_profile:
         if enable_bus:
             bus_voltage = st.number_input("DC bus voltage (V)", value=48.0, min_value=0.0, step=1.0, format="%.1f")
 
-        run_profile2 = st.button("Generate profile", use_container_width=True, type="primary", key="gen_profile_bottom")
+        run_profile = st.button("Generate profile", use_container_width=True, type="primary")
 
     with plot_col:
-        if run_profile1 or run_profile2:
+        if run_profile:
             try:
                 with st.spinner("Computing trajectory…"):
                     figs, res = generate_profile(
@@ -312,7 +312,7 @@ with tab_profile:
                           help="RMS over the move duration only.")
                 c3.metric(f"RMS Current (duty={duty_cycle_pct:.0f}%)",
                           f"{res['current_rms_total']:.3f} A",
-                          help="I_rms_profile × (duty) — Irms over the entire sequence according to the given duty cycle.")
+                          help="I_rms_profile × √(duty) — what the drive/motor sees thermally.")
 
                 # ── Bus voltage metrics ───────────────────────────────────────
                 if bus_voltage is not None:
@@ -381,21 +381,16 @@ with tab_filter:
         else:
             raise ValueError("Unknown filter type. Use 'notch', 'anti-notch', or 'lpf'.")
 
-        # Clamp to valid ranges: 0.1–4000 Hz, 0.01–1.0 damping
+        # Clamp to valid ACS ranges: 0.1–4000 Hz, 0.01–1.0 damping
         nf, df = np.clip([nf, df], 0.1, 4000)
         nd, dd = np.clip([nd, dd], 0.01, 1.0)
         return float(nf), float(df), float(nd), float(dd)
 
-    def compute_bode(filter_type, nf, df, nd, dd):
+    def compute_bode(nf, df, nd, dd):
         omega_n = 2 * np.pi * nf
         omega_d = 2 * np.pi * df
-        k = (omega_d / omega_n)**2
-        if filter_type =='lpf':
-            num = [k, k * 2 * nd * omega_n, k *omega_n ** 2]
-            den = [1, 2 * dd * omega_d, omega_d ** 2]
-        else:
-            num = [1, 2 * nd * omega_n, omega_n ** 2]
-            den = [1, 2 * dd * omega_d, omega_d ** 2]
+        num = [1, 2 * nd * omega_n, omega_n ** 2]
+        den = [1, 2 * dd * omega_d, omega_d ** 2]
         sys = signal.TransferFunction(num, den)
         w_hz = np.logspace(0, np.log10(4000), 600)
         _, mag, phase = signal.bode(sys, 2 * np.pi * w_hz)
@@ -439,48 +434,49 @@ with tab_filter:
 
     with ctrl_col2:
         st.subheader("Filter configuration")
-        options = ["notch", "anti-notch", "lpf", "manual"]
-        default_value = "manual"
+
         filter_type = st.selectbox(
             "Filter type",
-            options=options,
+            options=["notch", "anti-notch", "lpf", "manual"],
             format_func=lambda x: {
                 "notch":      "Notch",
                 "anti-notch": "Anti-notch / Band-pass",
-                "lpf":        "LPF",
-                "manual":     "Manual BiQuad (SLVB) parameters",
+                "lpf":        "LPF (2nd-order lag)",
+                "manual":     "Manual SLVB0 parameters",
             }[x],
-            index=options.index(default_value),
             key="filter_type_sel",
         )
 
         if filter_type == "manual":
-            # ── Manual BiQuad (SLVB) parameters ────────────────────────────────────────────
-            st.caption("Enter the four SLVB0 parameters directly (Valid range shown).")
+            # ── Manual SLVB0 entry ────────────────────────────────────────────
+            st.caption("Enter the four SLVB0 parameters directly (ACS valid range shown).")
 
-            st.markdown(r"""
-            $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}{s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
-            """)
+            st.markdown(
+                r"""
+                $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}
+                              {s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
+                """,
+            )
 
             man_nf = st.number_input(
                 "SLVB0NF — Numerator Frequency, ωN (Hz)",
                 min_value=0.1, max_value=4000.0, value=100.0, step=1.0, format="%.2f",
-                help="Valid range: 0.1 – 4000 Hz",
+                help="Valid ACS range: 0.1 – 4000 Hz",
             )
             man_df = st.number_input(
                 "SLVB0DF — Denominator Frequency, ωD (Hz)",
                 min_value=0.1, max_value=4000.0, value=100.0, step=1.0, format="%.2f",
-                help="Valid range: 0.1 – 4000 Hz",
+                help="Valid ACS range: 0.1 – 4000 Hz",
             )
             man_nd = st.number_input(
                 "SLVB0ND — Numerator Damping, ζN",
                 min_value=0.01, max_value=1.0, value=0.1, step=0.01, format="%.4f",
-                help="Valid range: 0.01 – 1.0",
+                help="Valid ACS range: 0.01 – 1.0",
             )
             man_dd = st.number_input(
                 "SLVB0DD — Denominator Damping, ζD",
                 min_value=0.01, max_value=1.0, value=0.5, step=0.01, format="%.4f",
-                help="Valid range: 0.01 – 1.0",
+                help="Valid ACS range: 0.01 – 1.0",
             )
 
         else:
@@ -499,7 +495,7 @@ with tab_filter:
                 width = 0.0
                 st.caption("Width is not used for LPF.")
 
-            atten_label = "Attenuation (dB)" if filter_type == "lpf" else "Attenuation (dB)"
+            atten_label = "Gain (dB)" if filter_type == "lpf" else "Attenuation (dB)"
             atten = st.number_input(atten_label, min_value=0.01, value=5.0, step=0.1, format="%.2f")
 
         run_filter = st.button("Compute & plot", use_container_width=True, type="primary", key="run_filter")
@@ -514,7 +510,7 @@ with tab_filter:
                     nf, df, nd, dd = calculate_biquad_params(filter_type, freq, width, atten)
                     bode_label = filter_type.upper()
 
-                freqs, mag, phase = compute_bode(filter_type, nf, df, nd, dd)
+                freqs, mag, phase = compute_bode(nf, df, nd, dd)
 
                 bode_title = (
                     f"Bode Plot — {bode_label}  |  "
