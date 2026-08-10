@@ -393,7 +393,7 @@ with tab_filter:
         if filter_type =='lpf':
             num = [k, k * 2 * nd * omega_n, k *omega_n ** 2]
             den = [1, 2 * dd * omega_d, omega_d ** 2]
-        else
+        else:
             num = [1, 2 * nd * omega_n, omega_n ** 2]
             den = [1, 2 * dd * omega_d, omega_d ** 2]
         sys = signal.TransferFunction(num, den)
