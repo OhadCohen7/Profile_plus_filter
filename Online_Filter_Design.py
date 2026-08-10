@@ -3,7 +3,6 @@ Motion Tools — Streamlit App
 Tabs:
   1. 3rd-Order Motion Profile Generator (pure-Python, no ruckig dependency)
   2. BiQuad Filter Designer
-Run: streamlit run acs_motion_tools.py
 """
 
 import numpy as np
@@ -402,7 +401,7 @@ with tab_filter:
         )
 
         if filter_type == "manual":
-            st.caption("Enter the four SLVB0 parameters directly (valid ACS range shown).")
+            st.caption("Enter the four SLVB0 parameters directly (valid range shown).")
             st.markdown(r"""
             $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}{s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
             """)
