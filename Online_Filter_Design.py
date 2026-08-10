@@ -407,17 +407,13 @@ with tab_filter:
 
             if filter_type == "lpf":
                 st.markdown("---")
-                st.caption("Damping ratios — shape the filter slope and resonance.")
-                lpf_nd = st.number_input(
-                    "ζN — Numerator damping (SLVB0ND)",
+                lpf_damp = st.number_input(
+                    "Damping rate (SLVB0ND = SLVB0DD)",
                     min_value=0.01, max_value=1.0, value=0.707, step=0.01, format="%.4f",
-                    help="0.707 = Butterworth (maximally flat). Lower values add a zero-pair resonance.",
+                    help="Applied to both numerator and denominator damping. "
+                         "0.707 = Butterworth (maximally flat). Lower values steepen roll-off.",
                 )
-                lpf_dd = st.number_input(
-                    "ζD — Denominator damping (SLVB0DD)",
-                    min_value=0.01, max_value=1.0, value=0.707, step=0.01, format="%.4f",
-                    help="0.707 = Butterworth (maximally flat). Lower values steepen roll-off with more overshoot.",
-                )
+                lpf_nd = lpf_dd = lpf_damp
             else:
                 lpf_nd = lpf_dd = None
 
