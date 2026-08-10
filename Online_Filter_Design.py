@@ -367,10 +367,9 @@ with tab_filter:
                 gridcolor="rgba(128,128,128,0.1)",
             ),
         )
-        # Top subplot: no x-axis label (shared axis, label only on bottom)
-        fig.update_xaxes(log_x_base, row=1, col=1)
-        # Bottom subplot: x-axis label here only
-        fig.update_xaxes({**log_x_base, "title_text": "Frequency (Hz)"}, row=2, col=1)
+        # Both subplots show tick labels; only bottom shows the axis title
+        fig.update_xaxes({**log_x_base, "showticklabels": True}, row=1, col=1)
+        fig.update_xaxes({**log_x_base, "showticklabels": True, "title_text": "Frequency (Hz)"}, row=2, col=1)
 
         fig.update_yaxes(title_text="Magnitude (dB)", showgrid=True, gridcolor="rgba(128,128,128,0.2)", row=1, col=1)
         fig.update_yaxes(title_text="Phase (°)",      showgrid=True, gridcolor="rgba(128,128,128,0.2)", row=2, col=1)
