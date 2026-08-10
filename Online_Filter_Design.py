@@ -1,9 +1,8 @@
 """
-ACS Motion Tools — Streamlit App
+Motion Tools — Streamlit App
 Tabs:
   1. 3rd-Order Motion Profile Generator (pure-Python, no ruckig dependency)
   2. BiQuad Filter Designer
-Run: streamlit run acs_motion_tools.py
 """
 
 import numpy as np
@@ -34,7 +33,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚙️ ACS Motion Tools")
+st.title("⚙️ Motion Tools")
 
 tab_profile, tab_filter = st.tabs(["📈 Motion Profile Generator", "🎛️ BiQuad Filter Designer"])
 
@@ -381,7 +380,7 @@ with tab_filter:
         else:
             raise ValueError("Unknown filter type. Use 'notch', 'anti-notch', or 'lpf'.")
 
-        # Clamp to valid ACS ranges: 0.1–4000 Hz, 0.01–1.0 damping
+        # Clamp to valid  ranges: 0.1–4000 Hz, 0.01–1.0 damping
         nf, df = np.clip([nf, df], 0.1, 4000)
         nd, dd = np.clip([nd, dd], 0.01, 1.0)
         return float(nf), float(df), float(nd), float(dd)
@@ -449,7 +448,7 @@ with tab_filter:
 
         if filter_type == "manual":
             # ── Manual SLVB0 entry ────────────────────────────────────────────
-            st.caption("Enter the four SLVB0 parameters directly (ACS valid range shown).")
+            st.caption("Enter the four SLVB0 parameters directly ( valid range shown).")
 
             st.markdown(
                 r"""
@@ -461,22 +460,22 @@ with tab_filter:
             man_nf = st.number_input(
                 "SLVB0NF — Numerator Frequency, ωN (Hz)",
                 min_value=0.1, max_value=4000.0, value=100.0, step=1.0, format="%.2f",
-                help="Valid ACS range: 0.1 – 4000 Hz",
+                help="Valid range: 0.1 – 4000 Hz",
             )
             man_df = st.number_input(
                 "SLVB0DF — Denominator Frequency, ωD (Hz)",
                 min_value=0.1, max_value=4000.0, value=100.0, step=1.0, format="%.2f",
-                help="Valid ACS range: 0.1 – 4000 Hz",
+                help="Valid range: 0.1 – 4000 Hz",
             )
             man_nd = st.number_input(
                 "SLVB0ND — Numerator Damping, ζN",
                 min_value=0.01, max_value=1.0, value=0.1, step=0.01, format="%.4f",
-                help="Valid ACS range: 0.01 – 1.0",
+                help="Valid range: 0.01 – 1.0",
             )
             man_dd = st.number_input(
                 "SLVB0DD — Denominator Damping, ζD",
                 min_value=0.01, max_value=1.0, value=0.5, step=0.01, format="%.4f",
-                help="Valid ACS range: 0.01 – 1.0",
+                help="Valid range: 0.01 – 1.0",
             )
 
         else:
