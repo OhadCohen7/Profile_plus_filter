@@ -3,6 +3,7 @@ Motion Tools — Streamlit App
 Tabs:
   1. 3rd-Order Motion Profile Generator (pure-Python, no ruckig dependency)
   2. BiQuad Filter Designer
+Run: streamlit run acs_motion_tools.py
 """
 
 import numpy as np
@@ -344,12 +345,28 @@ with tab_filter:
         fig.add_trace(go.Scatter(x=freqs, y=phase, mode="lines", name="Phase",
             line=dict(color="#3dd68c", width=2)), row=2, col=1)
 
+        # Major ticks: labeled decades + 2k/3k/4k
+        major_tickvals = [1, 10, 100, 1000, 2000, 3000, 4000]
+        major_ticktext = ["1", "10", "100", "1k", "2k", "3k", "4k"]
+
+        # Minor grid lines: every 10 Hz from 10–100, every 100 Hz from 100–1000
+        minor_gridvals = (
+            list(range(10, 100, 10)) +      # 10,20,...,90
+            list(range(100, 1000, 100))     # 100,200,...,900
+        )
+
         log_x_base = dict(
             type="log",
             range=[0, np.log10(4000)],
-            tickvals=[1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 4000],
-            ticktext=["1", "2", "5", "10", "20", "50", "100", "200", "500", "1k", "2k", "4k"],
-            showgrid=True, gridcolor="rgba(128,128,128,0.2)",
+            tickvals=major_tickvals,
+            ticktext=major_ticktext,
+            showgrid=True,
+            gridcolor="rgba(128,128,128,0.25)",
+            minor=dict(
+                tickvals=minor_gridvals,
+                showgrid=True,
+                gridcolor="rgba(128,128,128,0.1)",
+            ),
         )
         # Top subplot: no x-axis label (shared axis, label only on bottom)
         fig.update_xaxes(log_x_base, row=1, col=1)
@@ -385,7 +402,7 @@ with tab_filter:
         )
 
         if filter_type == "manual":
-            st.caption("Enter the four SLVB0 parameters directly (valid range shown).")
+            st.caption("Enter the four SLVB0 parameters directly (valid ACS range shown).")
             st.markdown(r"""
             $$H(s) = \frac{s^2 + 2\zeta_N\,\omega_N s + \omega_N^2}{s^2 + 2\zeta_D\,\omega_D s + \omega_D^2}$$
             """)
