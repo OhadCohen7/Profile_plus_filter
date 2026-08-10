@@ -386,7 +386,7 @@ with tab_filter:
         nd, dd = np.clip([nd, dd], 0.01, 1.0)
         return float(nf), float(df), float(nd), float(dd)
 
-    def compute_bode(filter_type, df, nd, dd):
+    def compute_bode(filter_type, nf, df, nd, dd):
         omega_n = 2 * np.pi * nf
         omega_d = 2 * np.pi * df
         k = (omega_d / omega_n)**2
